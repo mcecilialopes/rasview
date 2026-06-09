@@ -1,4 +1,9 @@
 import './index.css';
+
+// importei a conexão c a esp
+import { useWebSocket } from './hooks/useWebSocket'; 
+import { usePosition } from './hooks/usePosition';
+
 import { Header } from './components/Header';
 import { SpatialMap } from './components/SpatialMap';
 import { RobotArea } from './components/RobotArea';
@@ -9,6 +14,9 @@ import atualiza from './assets/atualizar.svg';
 
 
 export default function App() {
+  //rssi vai do websocket para o position
+  const { rssi, conectado } = useWebSocket();
+  const posicao = usePosition(rssi);
   return (
     <div className="rascunho">
       {/* decoração do fundo */}
@@ -56,12 +64,12 @@ export default function App() {
             <div className="dashboard-grid">
               {/* mapa + robo */}
               <div className="central-area">
-                <SpatialMap />
-                <RobotArea />
+                <SpatialMap posicao={posicao} />
+                <RobotArea/>
               </div>
 
               {/* barra lateral direita */}
-              <Sidebar />
+              <Sidebar conectado={conectado} rssi={rssi} />
             </div>
 
           </div>

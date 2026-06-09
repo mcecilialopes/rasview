@@ -523,6 +523,30 @@ body {
   width: 320px;
   overflow: auto;
 }
+/* adicionei a parte de offline na barra lateral*/
+.status-offline {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.dot-offline {
+  background: #9ca3af;
+  border-radius: 12px;
+  width: 8px;
+  height: 8px;
+}
+
+.offline-text {
+  color: #9ca3af;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+/*parei aqui*/
 
 .status-card {
   background: #ffffff;
