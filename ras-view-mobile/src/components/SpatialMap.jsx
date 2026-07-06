@@ -6,12 +6,13 @@ import { View, Text, StyleSheet } from 'react-native';
 // No mapa, usamos left/top em porcentagem para posicionar o pino
 
 const SALA_Y = 5.5; // metros — comprimento entre os dois beacons
+const SALA_X = 3.3; 
 
 export function SpatialMap({ posicao }) {
   // Converte posição em metros → porcentagem do mapa (0–100%)
   // Eixo Y do beacon vai de 0 (topo) a 5.5m (base), mapeado em top
   const pinTop  = posicao ? `${((posicao.y / SALA_Y) * 80 + 5).toFixed(1)}%` : '59%';
-  const pinLeft = '25%'; // sem dado X real, mantém centralizado
+  const pinLeft = posicao ? `${((posicao.x / SALA_X) * 80 + 5).toFixed(1)}%` : '25%'; // usa o valor de X para mover o pin
 
   const coordText = posicao
     ? `COORD: ${posicao.y.toFixed(1)}N, ${posicao.x.toFixed(1)}W`
