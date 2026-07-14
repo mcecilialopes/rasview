@@ -1,56 +1,86 @@
 const WebSocket = require("ws");
 const { exec } = require("child_process");
 
-const wss = new WebSocket.Server({ port: 81 }, () => {
-    console.log("simulador ativo");
-    console.log("Aguardando conexão do aplicativo na porta 81..");
+// === CONFIGURAÇÃO ===
+const PORTA = 8081; 
+const SSID_ALVO = "Rede Arthur 5G";
+
+const wss = new WebSocket.Server({ port: PORTA }, () => {
+    console.log("=== SIMULADOR ATIVO ===");
+    console.log(`Aguardando conexão do aplicativo na porta ${PORTA}...\n`);
 });
 
-// O nome do Wi-Fi do seu Tablet (Roteador)
-const SSID_ALVO = "brisa-4195049";
+let ultimoRssi1 = -70; // Valor padrão caso o scan falhe
 
 setInterval(() => {
-    // Filtra apenas as linhas de SSID e Sinal da rede alvo no Windows
-    exec(`netsh wlan show networks mode=bssid | findstr /I "${SSID_ALVO} Sinal Signal"`, (err, stdout) => {
-        if (err || !stdout) {
-            console.log(`Rede "${SSID_ALVO}" não detectada (Wi-Fi desligado ou fora de alcance).`);
-            return;
-        }
-
-        const lines = stdout.split("\n");
-        let sinalPorcentagem = null;
-
-        for (let line of lines) {
-            line = line.trim();
-            if (line.startsWith("Sinal") || line.startsWith("Signal") || line.toLowerCase().includes("sinal")) {
-                const partes = line.split(":");
-                if (partes[1]) {
-                    sinalPorcentagem = parseInt(partes[1].trim().replace("%", ""));
+    if (process.platform === "win32") {
+        // === CÓDIGO PARA WINDOWS ===
+        exec(`netsh wlan show networks mode=bssid | findstr /I "${SSID_ALVO} Sinal Signal"`, (err, stdout) => {
+            let sinalPorcentagem = null;
+            if (!err && stdout) {
+                const lines = stdout.split("\n");
+                for (let line of lines) {
+                    line = line.trim();
+                    if (/sinal|signal/i.test(line)) {
+                        const partes = line.split(":");
+                        if (partes[1]) {
+                            sinalPorcentagem = parseInt(partes[1].trim().replace("%", ""));
+                        }
+                    }
                 }
             }
-        }
-
-        if (sinalPorcentagem !== null) {
-            //conversão de % para dBm
-            const rssi1 = Math.round((sinalPorcentagem / 2) - 100);
-            
-            // SIMULAÇÃO DO BEACON 02 (Inversamente proporcional ao BEACON 01)-  para teste 
-            const rssi2 = -120 - rssi1;
-
-            console.log(` 🔴 ${SSID_ALVO} | BEACON_01: ${rssi1} dBm | BEACON_02: ${rssi2} dBm`);
-
-            // Envia os dados dos DOIS beacons para o app (consertar/revisar)
-            wss.clients.forEach(client => {
-                if (client.readyState === WebSocket.OPEN) {
-                    client.send(JSON.stringify({
-                        BEACON_01: rssi1,
-                        BEACON_02: rssi2, 
-                        ssid: SSID_ALVO
-                    }));
+            const rssi1 = sinalPorcentagem !== null ? Math.round((sinalPorcentagem / 2) - 100) : ultimoRssi1;
+            processarEEnviar(rssi1);
+        });
+    } else if (process.platform === "linux") {
+        // === CÓDIGO PARA LINUX (UBUNTU) ===
+        // nmcli lista as redes no formato: SSID:SINAL
+        exec("nmcli -t -f SSID,SIGNAL dev wifi", (err, stdout) => {
+            let sinalPorcentagem = null;
+            if (!err && stdout) {
+                const lines = stdout.split("\n");
+                for (let line of lines) {
+                    const partes = line.trim().split(":");
+                    if (partes[0] === SSID_ALVO && partes[1]) {
+                        sinalPorcentagem = parseInt(partes[1]);
+                        break; // Encontrou a rede alvo, pode parar o loop
+                    }
                 }
-            });
-        } else {
-            console.log(`SSID encontrado, mas não foi possível ler a linha de porcentagem do sinal.`);
+            }
+
+            if (sinalPorcentagem !== null) {
+                // Conversão de % para dBm no Linux
+                const rssi1 = Math.round((sinalPorcentagem / 2) - 100);
+                ultimoRssi1 = rssi1;
+                processarEEnviar(rssi1);
+            } else {
+                console.log(`[AVISO] Rede "${SSID_ALVO}" não detectada no scan do Linux. Usando simulado: ${ultimoRssi1} dBm`);
+                processarEEnviar(ultimoRssi1);
+            }
+        });
+    } else {
+        // Fallback genérico caso rode em outro lugar
+        processarEEnviar(-65);
+    }
+}, 2000);
+
+function processarEEnviar(rssi1) {
+    // Simulação física dos outros dois beacons para a trilateração do usePosition funcionar
+    const rssi2 = Math.max(-95, Math.min(-40, -135 - rssi1)); 
+    const rssi3 = Math.max(-95, Math.min(-40, -110 - (rssi1 / 1.5)));
+
+    console.log(` 🔴 ${SSID_ALVO} | B1: ${rssi1} dBm | B2: ${rssi2} dBm | B3: ${rssi3} dBm`);
+
+    const payload = JSON.stringify({
+        "BEACON_01": rssi1,
+        "BEACON_02": rssi2, 
+        "BEACON_03": rssi3,
+        "ssid": SSID_ALVO
+    });
+
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(payload);
         }
-    }); 
-}, 2000); 
+    });
+}
