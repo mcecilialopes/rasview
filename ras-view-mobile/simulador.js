@@ -77,7 +77,7 @@ function processarEEnviar(sinaisPorcentagem) {
     const payload = {};
 
     SSIDS_ALVO.forEach((ssid, indice) => {
-        const nomeBeacon = `BEACON_0${indice + 1}`;
+        const nomeBeacon = `RAS_BEACON_0${indice + 1}`;
 
         if (sinaisPorcentagem[ssid] !== undefined) {
             const rssi = Math.round((sinaisPorcentagem[ssid] / 2) - 100);
@@ -89,7 +89,7 @@ function processarEEnviar(sinaisPorcentagem) {
         }
     });
 
-    console.log(` 🔴 B1: ${payload.BEACON_01} dBm | B2: ${payload.BEACON_02} dBm | B3: ${payload.BEACON_03} dBm`);
+    console.log(` 🔴 B1: ${payload.RAS_BEACON_01} dBm | B2: ${payload.RAS_BEACON_02} dBm | B3: ${payload.RAS_BEACON_03} dBm`);
 
     const mensagem = JSON.stringify(payload);
     wss.clients.forEach(client => {
