@@ -1,9 +1,9 @@
 import { useMemo, useRef } from 'react';
 
 const BEACONS = [
-    { nome: 'BEACON_01', x: 0.0, y: 0.0, altura: 2.3 },
-    { nome: 'BEACON_02', x: 0.0, y: 8.8, altura: 2.3 },
-    { nome: 'BEACON_03', x: 3.3, y: 8.8, altura: 2.3 }
+    { nome: 'RAS_BEACON_01', x: 0.0, y: 0.0, altura: 2.3 },
+    { nome: 'RAS_BEACON_02', x: 0.0, y: 8.8, altura: 2.3 },
+    { nome: 'RAS_BEACON_03', x: 3.3, y: 8.8, altura: 2.3 }
 ];
 
 const RSSI_REF = -45.0;
@@ -42,7 +42,7 @@ function trilaterar(r0, r1, r2) {
 }
 
 export function usePosition(rssi) {
-    const ewmaRef = useRef({ BEACON_01: null, BEACON_02: null, BEACON_03: null });
+    const ewmaRef = useRef({ RAS_BEACON_01: null, RAS_BEACON_02: null, RAS_BEACON_03: null });
 
     const posicaoCalculada = useMemo(() => {
         if (!rssi) return null;
@@ -85,4 +85,6 @@ export function usePosition(rssi) {
     }, [rssi]);
 
     return posicaoCalculada;
+    console.log(`POSIÇAO: ${posicaoCalculada}`);
+    console.log({posicaoCalculada});
 }
