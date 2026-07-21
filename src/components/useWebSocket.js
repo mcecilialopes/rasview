@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 
-const WS_URL = 'ws://192.168.1.100:81'; // trocar pelo IP da ESP sender
+const WS_URL = 'ws://192.168.1.100:81';
 
 export function useWebSocket(url = WS_URL) {
-  const [rssi, setRssi] = useState(null); // { BEACON_01: -53, BEACON_02: -62 }
+  const [rssi, setRssi] = useState(null); 
   const [conectado, setConectado] = useState(false);
   const wsRef = useRef(null);
 
