@@ -1,18 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-// posicao: { x, y, d0, d1, maisPerto } | null
-// A posição é mapeada para % da sala (sala tem 5.5m de comprimento no eixo Y)
-// No mapa, usamos left/top em porcentagem para posicionar o pino
-
-const SALA_Y = 5.5; // metros — comprimento entre os dois beacons
-const SALA_X = 3.3; 
-
-export function SpatialMap({ posicao }) {
+// Agora o componente recebe "medidas" além da "posicao"
+export function SpatialMap({ posicao, medidas }) {
   // Converte posição em metros → porcentagem do mapa (0–100%)
-  // Eixo Y do beacon vai de 0 (topo) a 5.5m (base), mapeado em top
-  const pinTop  = posicao ? `${((posicao.y / SALA_Y) * 80 + 5).toFixed(1)}%` : '59%';
-  const pinLeft = posicao ? `${((posicao.x / SALA_X) * 80 + 5).toFixed(1)}%` : '25%'; // usa o valor de X para mover o pin
+  // Usamos as medidas passadas por prop em vez de valores fixos
+  const pinTop  = posicao ? `${((posicao.y / medidas.y) * 80 + 5).toFixed(1)}%` : '59%';
+  const pinLeft = posicao ? `${((posicao.x / medidas.x) * 80 + 5).toFixed(1)}%` : '25%'; 
 
   const coordText = posicao
     ? `COORD: ${posicao.y.toFixed(1)}N, ${posicao.x.toFixed(1)}W`
@@ -21,20 +15,14 @@ export function SpatialMap({ posicao }) {
   return (
     <View style={styles.spatialMap}>
       <View style={styles.mapFloor}>
-        {/* Parede lateral */}
         <View style={styles.mapWall} />
-
-        {/* Mesa */}
         <View style={styles.mapTable}>
           <Text style={styles.mapLabel}>MESA</Text>
         </View>
-
-        {/* Entrada */}
         <View style={styles.mapEntrada}>
           <Text style={styles.mapEntradaText}>ENTRADA</Text>
         </View>
 
-        {/* Pino VOCÊ — posição dinâmica */}
         <View style={[styles.mapYou, { top: pinTop, left: pinLeft }]}>
           <View style={styles.youPin} />
           <View style={styles.youLabel}>
@@ -44,7 +32,6 @@ export function SpatialMap({ posicao }) {
           </View>
         </View>
 
-        {/* Overlay bússola + coordenadas */}
         <View style={styles.mapOverlay}>
           <View style={styles.compass}>
             <Text style={styles.compassText}>N</Text>
@@ -55,7 +42,6 @@ export function SpatialMap({ posicao }) {
     </View>
   );
 }
-
 const BORDER_COLOR = 'rgba(228,189,194,0.4)';
 
 const styles = StyleSheet.create({

@@ -1,13 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 
-// Definição da estrutura dos dados de RSSI que chegam da ESP
+// Agora esperamos 3 beacons da rede
 export interface RssiData {
   BEACON_01?: number;
   BEACON_02?: number;
+  BEACON_03?: number;
   [key: string]: number | undefined;
 }
 
-const WS_URL = 'ws://192.168.0.3:81'; //colocar do notebook
+const WS_URL = 'ws://192.168.0.4:81'; // Lembre de conferir se este IP é o do seu PC atual
 
 export function useWebSocket(url = WS_URL) {
   const [rssi, setRssi] = useState<RssiData | null>(null);
@@ -19,7 +20,7 @@ export function useWebSocket(url = WS_URL) {
     wsRef.current = ws;
 
     ws.onopen = () => {
-      console.log(" Conectado ao simulador de Wi-Fi!");
+      console.log("Conectado ao simulador de Wi-Fi!");
       setConectado(true);
     };
     
@@ -29,7 +30,6 @@ export function useWebSocket(url = WS_URL) {
     ws.onmessage = (e) => {
       try {
         const dados: RssiData = JSON.parse(e.data);
-        console.log("Dados recebidos da ESP no celular:", dados); 
         setRssi(dados);
       } catch (err) {
         console.error('Erro ao parsear JSON:', err);

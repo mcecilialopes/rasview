@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  TextInput,
+  Keyboard
 } from 'react-native';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { usePosition } from '../../hooks/usePosition';
@@ -20,55 +22,78 @@ export default function HomeScreen() {
   const { rssi, conectado } = useWebSocket();
   const posicao = usePosition(rssi);
 
+  // Estados para gerenciar as medidas da sala
+  const [medidasSala, setMedidasSala] = useState({ x: 3.3, y: 5.5 });
+  const [inputX, setInputX] = useState('3.3');
+  const [inputY, setInputY] = useState('5.5');
+
+  // Função para salvar e aplicar os testes no mapa
+  const aplicarMedidas = () => {
+    setMedidasSala({
+      x: parseFloat(inputX) || 3.3,
+      y: parseFloat(inputY) || 5.5,
+    });
+    Keyboard.dismiss();
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="rgba(249,249,252,0.95)" />
 
-      {/* Top bar */}
       <Header />
 
-      {/* Fundo decorativo */}
       <View style={styles.bgDecoration}>
         <View style={styles.bgCircle1} />
         <View style={styles.bgCircle2} />
       </View>
 
-      {/* Conteúdo principal com scroll */}
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Dashboard card */}
         <View style={styles.dashboardCard}>
-
-          {/* Cabeçalho do card */}
           <View style={styles.headerSection}>
             <View style={styles.headerTitles}>
               <Text style={styles.dashboardTitle}>Dashboard de Orientação</Text>
-              <Text style={styles.dashboardSubtitle}>Ambiente: CI 102 (35m²)</Text>
+              <Text style={styles.dashboardSubtitle}>Ambiente atual: {medidasSala.x}m x {medidasSala.y}m</Text>
             </View>
-            <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.btnOutline} activeOpacity={0.7}>
-                <Text style={styles.btnOutlineText}>Ver Pontos de Interesse</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnPrimary} activeOpacity={0.8}>
-                <Text style={styles.btnPrimaryText}>Atualizar Posição</Text>
+
+            {/* Nova área para alterar as medidas do mapa */}
+            <View style={styles.configArea}>
+               <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Largura (X):</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={inputX} 
+                    onChangeText={setInputX} 
+                    keyboardType="numeric" 
+                  />
+               </View>
+               <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Comprimento (Y):</Text>
+                  <TextInput 
+                    style={styles.input} 
+                    value={inputY} 
+                    onChangeText={setInputY} 
+                    keyboardType="numeric" 
+                  />
+               </View>
+              <TouchableOpacity style={styles.btnPrimary} onPress={aplicarMedidas} activeOpacity={0.8}>
+                <Text style={styles.btnPrimaryText}>Atualizar Mapa</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Área central: mapa + robô */}
           <View style={styles.dashboardGrid}>
             <View style={styles.centralArea}>
-              <SpatialMap posicao={posicao} />
+              {/* Passando as medidas dinâmicas para o mapa */}
+              <SpatialMap posicao={posicao} medidas={medidasSala} />
               <RobotArea />
             </View>
 
-            {/* Sidebar */}
             <Sidebar conectado={conectado} rssi={rssi} />
           </View>
-
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -143,6 +168,27 @@ const styles = StyleSheet.create({
     gap: 10, 
     flexWrap: 'wrap' 
   },
+
+  configArea: { 
+    flexDirection: 'row', 
+    gap: 10, flexWrap: 'wrap', 
+    alignItems: 'flex-end',
+    marginTop: 10, padding: 10, 
+    backgroundColor: 'rgba(0,0,0,0.03)',
+     borderRadius: 8 },
+  inputGroup: { 
+    flexDirection: 'column', 
+    gap: 4 },
+  inputLabel: { 
+    fontSize: 12, 
+    color: '#5b3f43', 
+    fontWeight: '500' },
+  input: { 
+    backgroundColor: '#fff', 
+    borderWidth: 1, borderColor: '#e4bdc2',
+    borderRadius: 4, width: 70, height: 36,
+    textAlign: 'center', 
+    color: '#1a1c1e' },
   btnOutline: { 
     borderRadius: 4, 
     borderWidth: 1, 

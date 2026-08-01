@@ -1,11 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-
 import SinalIcon from '../assets/sinal.svg';
 import NSinalIcon from '../assets/nsinal.svg';
 
-export function Sidebar({ rssi, conectado }) {
+export function Sidebar({ rssi, conectado, nomes = [] }) {
   return (
     <View style={styles.sidebar}>
       {/* Status do sistema */}
@@ -22,15 +21,20 @@ export function Sidebar({ rssi, conectado }) {
           </View>
         </View>
 
-        <View style={styles.precisionRow}>
-          <Text style={styles.precisionLabel}>BEACON_01</Text>
-          <Text style={styles.precisionValue}>{rssi?.BEACON_01 ?? '—'} dBm</Text>
-        </View>
-
-        <View style={styles.precisionRow}>
-          <Text style={styles.precisionLabel}>BEACON_02</Text>
-          <Text style={styles.precisionValue}>{rssi?.BEACON_02 ?? '—'} dBm</Text>
-        </View>
+        {/* Renderiza apenas os nomes que vieram do usePosition */}
+        {nomes.length > 0 ? (
+          nomes.map((nome) => (
+            <View key={nome} style={styles.precisionRow}>
+              <Text style={styles.precisionLabel}>{nome}</Text>
+              <Text style={styles.precisionValue}>{rssi?.[nome] ?? '—'} dBm</Text>
+            </View>
+          ))
+        ) : (
+          <View style={styles.precisionRow}>
+            <Text style={styles.precisionLabel}>Buscando redes...</Text>
+            <Text style={styles.precisionValue}>—</Text>
+          </View>
+        )}
 
         <View style={styles.separator} />
       </View>

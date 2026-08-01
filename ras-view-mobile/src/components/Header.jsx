@@ -19,8 +19,7 @@ export function Header() {
       </View>
 
       <View style={styles.robotHeaderBadge}>
-       <RasLogo width={102} height={55} /> 
-        <Text style={styles.badgeText}>RAS</Text>
+       <RasLogo width={102} height={45} /> 
       </View>
     </View>
   );
