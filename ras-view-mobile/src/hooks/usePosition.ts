@@ -1,12 +1,11 @@
 import { useMemo, useRef } from 'react';
-import { RssiData } from './useWebSocket';
+import { BeaconData } from './useWebSocket';
 import  * as math  from 'mathjs';
 
 interface BeaconConfig {
   x: number;
   y: number;
   altura: number;
-  n: number; // para cada esp ter um especifico
 }
 
 export interface PosicaoResultado {
@@ -20,29 +19,16 @@ export interface PosicaoResultado {
 
 // "Banco de dados" com as posições físicas (em metros) na sala.
 const BEACONS_CONHECIDOS: Record<string, BeaconConfig> = {
-  'RAS_BEACON_01': { x: 0.0, y: 0.0, altura: 2.3, n: 2.5 },
-  'RAS_BEACON_02': { x: 0.0, y: 8.8, altura: 2.3, n: 2.5 },
-  'RAS_BEACON_03': { x: 3.3, y: 8.8, altura: 2.3, n: 2.5 },
-  'RAS_BEACON_04': { x: 3.3, y: 0.0, altura: 2.3, n: 2.5 },
+  'RAS_BEACON_01': { x: 0.0, y: 0.0, altura: 2.3},
+  'RAS_BEACON_02': { x: 0.0, y: 8.8, altura: 2.3},
+  'RAS_BEACON_03': { x: 3.3, y: 8.8, altura: 2.3},
+  'RAS_BEACON_04': { x: 3.3, y: 0.0, altura: 2.3},
 };
 
-const FORCA_REF = -45.0; // RSSI medido a 1 metro
 const ALTURA_CEL = 1.5;  // altura média do celular 
-const ALPHA      = 0.2;  // peso do filtro de suavização
 const Q_KALMAN  = 0.1;  // ruido de processo (quanto maior, mais responsivo)
 const R_KALMAN  = 0.1;  // ruido de medição (quão confiável é))
 
-// Cálculo compensando a diferença de altura entre o beacon e o celular
-function calcularDistancia(rssi: number | undefined, altura: number, n: number): number | null {
-  if (!rssi || rssi === 0) return null;
-  const d = Math.pow(10, (FORCA_REF - rssi) / (10 * n));
-  
-  const delta_h = altura - ALTURA_CEL;
-  const compensado = Math.pow(d, 2) - Math.pow(delta_h, 2);
-  
-  if (compensado < 0) return Math.abs(d);
-  return Math.sqrt(compensado);
-}
 
 // Intersecção de 3 círculos dinâmica 
 function trilaterar(
@@ -69,9 +55,8 @@ function trilaterar(
   };
 }
 
-export function usePosition(rssi: RssiData | null): PosicaoResultado | null {
-  // Filtro EWMA
-  const filtros = useRef<Record<string, { rssiEstimado: number, primeiraLeitura: boolean }>>({});
+export function usePosition(beaconData: BeaconData | null): PosicaoResultado | null {
+ // ref para armazenar o último tempo de leitura
   const ultimoTempoRef = useRef<number>(Date.now());
 
   // ref para armazenar o buffer de log
@@ -100,7 +85,7 @@ export function usePosition(rssi: RssiData | null): PosicaoResultado | null {
   ]); //basicamente é quem calcula como a posição muda posicao = posicao + velocidade * dt
 
   const posicao = useMemo(() => {
-    if (!rssi) return null;
+    if (!beaconData) return null;
 
     // calcula dt só quando há uma leitura nova
     const now = Date.now();
@@ -110,36 +95,30 @@ export function usePosition(rssi: RssiData | null): PosicaoResultado | null {
     ultimoTempoRef.current = now;
 
     // ordena e pega as 3 mais fortes
-    const redes = Object.entries(rssi)
-      .sort(([, rssiA], [, rssiB]) => (rssiB as number) - (rssiA as number))
+    const redes = Object.entries(beaconData)
+      .filter(([key]) => key.startsWith('BEACON_'))
+      .map(([nome, dados]) => [nome, dados?.rssi ?? -100, dados] as [string, number, any])
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 3);
 
     // A trilateração exige 3 distâncias
     if (redes.length < 3) return null;
 
     // processa os sinais passando pelo EWMA e Pitágoras
-    const processados = redes.map(([nome, rssiBruto]) => {
-    
-      if (!filtros.current[nome]) {
-        filtros.current[nome] = { rssiEstimado: rssiBruto as number, primeiraLeitura: true };
-      }
+    const processados = redes.map(([nome, , dados]) => {
+      const config = BEACONS_CONHECIDOS[nome] || { x: 0, y: 0, altura: 2.3 }; // fallback caso o beacon não esteja no "banco de dados"
+      const distBruta = dados.distancia; // calculada pela esp
+
+      const delta_h = config.altura - ALTURA_CEL;
+      const compensado = Math.pow(distBruta, 2) - Math.pow(delta_h, 2);
       
-      const filtro = filtros.current[nome];
+      const distFinal = compensado < 0 ? Math.abs(distBruta) : Math.sqrt(compensado);
 
-      if (filtro.primeiraLeitura) {
-        filtro.rssiEstimado = rssiBruto as number;
-        filtro.primeiraLeitura = false;
-      } else {
-        filtro.rssiEstimado = ALPHA * (rssiBruto as number) + (1 - ALPHA) * filtro.rssiEstimado;
-      }
-
-      const config = BEACONS_CONHECIDOS[nome] || { x: 0.0, y: 0.0, altura: 2.3, n: 2.5 };
-      const dist = calcularDistancia(filtro.rssiEstimado, config.altura, config.n);
-
-      return { config, dist };
+      return { config, dist: distFinal, nome };
     });
-
+    
     const [p0, p1, p2] = processados;
+
 
     if (p0.dist === null || p1.dist === null || p2.dist === null) return null;
 
@@ -235,7 +214,7 @@ export function usePosition(rssi: RssiData | null): PosicaoResultado | null {
       d2: p2.dist,
       nomes: [redes[0][0], redes[1][0], redes[2][0]]
     };
-  }, [rssi]);
+  }, [beaconData]); 
 
   return posicao;
 }
